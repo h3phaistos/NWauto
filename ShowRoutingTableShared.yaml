@@ -1,0 +1,46 @@
+---
+# ansible-playbook ShowRoutingTableShared.yaml -e "version=postOPE"
+# ansible-playbook ShowRoutingTableShared.yaml -e "version=postOPE" -e "pop=DCC"
+# ansible-playbook ShowRoutingTableShared.yaml -e "version=postOPE" -e "devices=PE-GDC,PE-DCC"
+# ansible-playbook ShowRoutingTableShared.yaml -e "version=postOPE" -e "devices=PE-GDC,PE-DCC" -e "vrf=VPN1001"
+#
+#
+#
+- name: Getting user credentials from terminal
+  hosts: localhost
+
+# defining variables given as arg
+  vars:
+    check_version: "{{ version }}"
+    hosts_group: "{{ devices }}"
+    vrf_name: "{{ vrf }}"
+
+# prompting for username pwd 
+  vars_prompt:
+  - name: user_name
+    prompt: "Username"
+    private: no
+  - name: pass_word
+    prompt: "Password"
+    private: yes 
+
+# Setting facts with variales values 
+  tasks:
+    - set_fact:
+        userid={{ user_name }}
+        userpwd={{ pass_word }}
+        check_vers={{ check_version }}
+        host_grp={{ hosts_group }}
+        vpn_name={{ vrf_name }}
+      register: userid
+    - debug: var=userid
+
+# Launching sub-playbook with arguments
+- include: ShowRoutingTableVpnIOS.yaml
+  vars:
+    user: "{{ hostvars['localhost']['userid'] }}"
+    pwd: "{{ hostvars['localhost']['userpwd'] }}"
+    check: "{{ hostvars['localhost']['check_vers'] }}"
+    device_grp: "{{ hostvars['localhost']['host_grp'] }}"
+    vpn: "{{ hostvars['localhost']['vpn_name'] }}"
+...

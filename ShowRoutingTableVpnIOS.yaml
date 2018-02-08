@@ -1,0 +1,56 @@
+---
+#Tshooter le passage de VPN en variable. Ca a lair de fonctionner
+- name: Getting credentials from prompt
+  hosts: "{{ device_grp }}"
+  gather_facts: yes
+  connection: local
+
+
+  tasks:
+
+# Definition du provider a fournir au module ios)
+    - name: Define provider
+      set_fact:
+        provider:
+          host: "{{ inventory_hostname }}"
+          username: "{{ user }}"
+          password: "{{ pwd }}"
+
+# Lancement du module ios facts
+#    - name: ssh facts
+#      iosxr_facts:
+#        gather_subset:
+#          - config
+#            - ansible_net_hostname
+#        provider: "{{ provider }}"
+#      register: iosfacts_out
+#    - debug: var="{{ ansible_net_hostname }}"
+#    - debug: var=iosfacts_out
+
+# Lancement du module ios pour executer les show commands
+    - name: Actually do show ip route vrf {{ vpn }}
+      iosxr_command:
+        provider: "{{ provider  }}" 
+        commands: 
+          - show route vrf {{ vpn }}
+
+# Register l output du show command 
+      register: routing_table_ios
+
+# Copie l output du show command dans un fichier    
+    - name: Copy the routing table to a file
+      copy:
+        content: "{{ routing_table_ios.stdout[0] }}"
+        dest: "/home/pt2044/Playbooks/Final/show_route/output/show_route_{{ inventory_hostname }}_{{ vpn }}_{{ check }}.txt"
+#        dest: "/home/pt2044/Playbooks/Final/show_route/output/show_route_{{ ansible_net_hostname  }}_{{ vpn }}_{{ check }}.txt"
+
+# S il s agit de la version postOPE du fichier Lance le script python de comparaison
+    - name: Executing the compare script
+      command: python compareRoutingTables_IOS.py /home/pt2044/Playbooks/Final/show_route/output/show_route_"{{ inventory_hostname }}"_"{{ vpn }}"_preOPE.txt /home/pt2044/Playbooks/Final/show_route/output/show_route_"{{ inventory_hostname }}"_{{ vpn }}_postOPE.txt
+      when: check == "postOPE"
+
+# Enregistre la sortie standard et l affiche dans le playbook       
+      register: output
+    - debug: var=output.stdout_lines
+      when: check == "postOPE"
+...
